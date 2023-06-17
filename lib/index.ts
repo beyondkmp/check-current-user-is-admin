@@ -1,5 +1,5 @@
 type NativeModule = {
-  is24hoursTimeFormat: () => boolean
+  currentUserIsAdmin: () => boolean
 }
 
 // The native binary will be loaded lazily to avoid any possible crash at start
@@ -7,11 +7,11 @@ type NativeModule = {
 let _nativeModule: NativeModule | undefined = undefined
 
 function getNativeModule() {
-  _nativeModule = require('bindings')('check-24-hours-time.node')
+  _nativeModule = require('bindings')('check-current-user-is-admin.node')
   return _nativeModule
 }
 
-export function is24hoursTimeFormat(): boolean {
-  const result = getNativeModule()?.is24hoursTimeFormat()
+export function currentUserIsAdmin(): boolean {
+  const result = getNativeModule()?.currentUserIsAdmin()
   return !!result
 }

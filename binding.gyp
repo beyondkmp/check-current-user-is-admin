@@ -1,7 +1,7 @@
 {
   'targets': [
     {
-      'target_name': 'check-24-hours-time',
+      'target_name': 'check-current-user-is-admin',
       'cflags!': [ '-fno-exceptions' ],
       'cflags_cc!': [ '-fno-exceptions' ],
       'msvs_settings': {
@@ -25,7 +25,7 @@
         }],
         ["OS=='mac'", {
           'sources': [
-            'src/main.mm',
+            'src/main.cc',
           ],
               "cflags+": [ "-stdlib=libc++" ],
               "xcode_settings": {

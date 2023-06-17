@@ -1,7 +1,6 @@
-# Check 24 hours time
+# Check current user is admin
 
-A thin wrapper native interface to check the system setting is the 24 hours time
-format
+Use this package to check if current user is admin or not by native c++ code.
 
 ## Goals
 
@@ -11,25 +10,24 @@ format
 ## Install
 
 ```shellsession
-$ yarn add check-24-hours-time
+$ yarn add check-current-user-is-admin
 # or
-$ npm install --save check-24-hours-time
+$ npm install --save check-current-user-is-admin
 ```
 
 ## API
 
 ```typescript
-import { is24hoursTimeFormat } from 'check-24-hours-time'
+import { currentUserIsAdmin } from 'check-current-user-is-admin'
 
-// is24hoursTimeFormat returns true if system time is 24 hours. returns false if 12 hours
-const result = is24hoursTimeFormat()
+const result = currentUserIsAdmin()
 console.log(result)
 ```
 
 ## Documentation
 
 See the documentation under the
-[`docs`](https://github.com/beyondkmp/check-24-hours-time/tree/master/docs)
+[`docs`](https://github.com/beyondkmp/check-current-user-is-admin/tree/master/docs)
 folder.
 
 ## Supported versions
@@ -45,7 +43,7 @@ supported currently.
 ## Contributing
 
 Read the
-[Setup](https://github.com/beyondkmp/check-24-hours-time/blob/master/docs/index.md#setup)
+[Setup](https://github.com/beyondkmp/check-current-user-is-admin/blob/master/docs/index.md#setup)
 section to ensure your development environment is setup for what you need.
 
 If you want to see something supported, open an issue to start a discussion

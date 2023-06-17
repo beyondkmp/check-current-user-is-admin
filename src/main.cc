@@ -1,30 +1,61 @@
 #include <napi.h>
-#include <windows.h>
 
-Napi::Value is24hoursTimeFormat(const Napi::CallbackInfo &info)
+#include <unistd.h>
+#include <grp.h>
+#include <pwd.h>
+#include <string.h>
+#include <sys/syslimits.h>
+
+Napi::Value currentUserIsAdmin(const Napi::CallbackInfo &info)
 {
-  wchar_t format[80]; // 80 is always enough
-  bool is24Hours = false;
+  // A user cannot be member in more than NGROUPS_MAX groups,
+  // not counting the default group (hence the + 1)
+  gid_t groupIDs[NGROUPS_MAX + 1];
+  // ID of user who started the process
+  uid_t userID = getuid();
+  // Get user password info for that user
+  struct passwd *pw = getpwuid(userID);
 
-  int ret = GetLocaleInfoEx(
-      LOCALE_NAME_USER_DEFAULT,
-      LOCALE_SSHORTTIME,
-      format,
-      sizeof(format) / sizeof(*format));
-  if (ret != 0 && format[0] == 'H')
+  int groupCount;
+  if (pw)
   {
-    is24Hours = true;
+    // Look up groups that user belongs to
+    groupCount = NGROUPS_MAX + 1;
+    // getgrouplist returns ints and not gid_t and
+    // both may not necessarily have the same size
+    int intGroupIDs[NGROUPS_MAX + 1];
+    getgrouplist(pw->pw_name, pw->pw_gid, intGroupIDs, &groupCount);
+    // Copy them to real array
+    for (int i = 0; i < groupCount; i++)
+      groupIDs[i] = intGroupIDs[i];
   }
-  return Napi::Value::From(info.Env(), is24Hours);
+  else
+  {
+    // We cannot lookup the user but we can look what groups this process
+    // currently belongs to (which is usually the same group list).
+    groupCount = getgroups(NGROUPS_MAX + 1, groupIDs);
+  }
+
+  for (int i = 0; i < groupCount; i++)
+  {
+    // Get the group info for each group
+    struct group *group = getgrgid(groupIDs[i]);
+    if (!group)
+      continue;
+    // An admin user is member of the group named "admin"
+    if (strcmp(group->gr_name, "admin") == 0)
+      return Napi::Value::From(info.Env(), true);
+  }
+  return Napi::Value::From(info.Env(), false);
 }
 
 Napi::Object Init(Napi::Env env, Napi::Object exports)
 {
-  exports.Set(Napi::String::New(env, "is24hoursTimeFormat"), Napi::Function::New(env, is24hoursTimeFormat));
+  exports.Set(Napi::String::New(env, "currentUserIsAdmin"), Napi::Function::New(env, currentUserIsAdmin));
   return exports;
 }
 #if NODE_MAJOR_VERSION >= 10
-NAN_MODULE_WORKER_ENABLED(check24HoursTimeModule, Init)
+NAN_MODULE_WORKER_ENABLED(currentUserIsAdminModule, Init)
 #else
-NODE_API_MODULE(check24HoursTimeModule, Init);
+NODE_API_MODULE(currentUserIsAdminModule, Init);
 #endif

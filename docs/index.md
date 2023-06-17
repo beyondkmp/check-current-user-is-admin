@@ -3,18 +3,17 @@
 ## API
 
 ```typescript
-import { is24hoursTimeFormat } from 'check-24-hours-time'
+import { currentUserIsAdmin } from 'check-current-user-is-admin'
 
-// is24hoursTimeFormat returns true if system time is 24 hours. returns false if 12 hours
-const result = is24hoursTimeFormat()
+const result = currentUserIsAdmin()
 console.log(result)
 ```
 
 ## Setup
 
 ```shellsession
-$ git clone https://github.com/beyondkmp/check-24-hours-time.git
-$ cd check-24-hours-time
+$ git clone https://github.com/beyondkmp/check-current-user-is-admin.git
+$ cd check-current-user-is-admin
 $ yarn
 ```
 
