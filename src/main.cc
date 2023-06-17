@@ -1,53 +1,84 @@
+#include <iostream>
+#include <windows.h>
+#include <lm.h>
+
 #include <napi.h>
 
-#include <unistd.h>
-#include <grp.h>
-#include <pwd.h>
-#include <string.h>
-#include <sys/syslimits.h>
-
-Napi::Value currentUserIsAdmin(const Napi::CallbackInfo &info)
+ULONG isTokenAdmin(HANDLE hToken, PBOOL pbIsAdmin)
 {
-  // A user cannot be member in more than NGROUPS_MAX groups,
-  // not counting the default group (hence the + 1)
-  gid_t groupIDs[NGROUPS_MAX + 1];
-  // ID of user who started the process
-  uid_t userID = getuid();
-  // Get user password info for that user
-  struct passwd *pw = getpwuid(userID);
-
-  int groupCount;
-  if (pw)
-  {
-    // Look up groups that user belongs to
-    groupCount = NGROUPS_MAX + 1;
-    // getgrouplist returns ints and not gid_t and
-    // both may not necessarily have the same size
-    int intGroupIDs[NGROUPS_MAX + 1];
-    getgrouplist(pw->pw_name, pw->pw_gid, intGroupIDs, &groupCount);
-    // Copy them to real array
-    for (int i = 0; i < groupCount; i++)
-      groupIDs[i] = intGroupIDs[i];
-  }
-  else
-  {
-    // We cannot lookup the user but we can look what groups this process
-    // currently belongs to (which is usually the same group list).
-    groupCount = getgroups(NGROUPS_MAX + 1, groupIDs);
-  }
-
-  for (int i = 0; i < groupCount; i++)
-  {
-    // Get the group info for each group
-    struct group *group = getgrgid(groupIDs[i]);
-    if (!group)
-      continue;
-    // An admin user is member of the group named "admin"
-    if (strcmp(group->gr_name, "admin") == 0)
-      return Napi::Value::From(info.Env(), true);
-  }
-  return Napi::Value::From(info.Env(), false);
+    ULONG cbSid = MAX_SID_SIZE;
+    PSID pSid = alloca(cbSid);
+    return CreateWellKnownSid(::WinBuiltinAdministratorsSid, 0, pSid, &cbSid) &&
+        CheckTokenMembership(hToken, pSid, pbIsAdmin) ? NOERROR : GetLastError();
 }
+
+ULONG isUserAnAdminEx(PBOOL pbIsAdmin, PBOOL pbNeedElevate)
+{
+    ULONG dwError = NOERROR;
+
+    HANDLE hToken;
+    if (OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY | TOKEN_DUPLICATE, &hToken))
+    {
+        ULONG cb;
+        union {
+            TOKEN_ELEVATION_TYPE tet;
+            TOKEN_LINKED_TOKEN tlt;
+        };
+
+        if (GetTokenInformation(hToken, ::TokenElevationType, &tet, sizeof(tet), &cb))
+        {
+            switch (tet)
+            {
+            case TokenElevationTypeLimited:
+                *pbNeedElevate = TRUE;
+                if (GetTokenInformation(hToken, ::TokenLinkedToken, &tlt, sizeof(tlt), &cb))
+                {
+                    dwError = IsTokenAdmin(tlt.LinkedToken, pbIsAdmin);
+                    CloseHandle(tlt.LinkedToken);
+                }
+                else
+                {
+                    dwError = GetLastError();
+                }
+                break;
+            case TokenElevationTypeFull:
+            case TokenElevationTypeDefault:
+                *pbNeedElevate = FALSE;
+                // only because CheckTokenMembership want an impersonation token.
+                // really most query can be and must be done direct with this token
+                if (DuplicateToken(hToken, ::SecurityIdentification, &tlt.LinkedToken))
+                {
+                    dwError = IsTokenAdmin(tlt.LinkedToken, pbIsAdmin);
+                    CloseHandle(tlt.LinkedToken);
+                }
+                else
+                {
+                    GetLastError();
+                }
+                break;
+            default:
+                dwError = ERROR_GEN_FAILURE;
+            }
+        }
+        else
+        {
+            dwError = GetLastError();
+        }
+
+        CloseHandle(hToken);
+    }
+
+    return dwError;
+}
+
+Napi::Value currentUserIsAdmin(const Napi::CallbackInfo &info){
+    BOOL isAdmin;
+    BOOL needElevate;
+    ULONG error = IsUserAnAdminEx(&isAdmin, &needElevate);
+		return Napi::Value::From(info.Env(), isAdmin);
+}
+
+
 
 Napi::Object Init(Napi::Env env, Napi::Object exports)
 {

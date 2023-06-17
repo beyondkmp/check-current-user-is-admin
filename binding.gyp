@@ -25,7 +25,7 @@
         }],
         ["OS=='mac'", {
           'sources': [
-            'src/main.cc',
+            'src/main.mm',
           ],
               "cflags+": [ "-stdlib=libc++" ],
               "xcode_settings": {
