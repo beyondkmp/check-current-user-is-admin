@@ -1,6 +1,6 @@
 {
   "name": "check-current-user-is-admin",
-  "version": "1.0.0",
+  "version": "1.9.0",
   "description": "Check current user is admin by c++",
   "main": "dist/index.js",
   "typings": "dist/index.d.ts",
